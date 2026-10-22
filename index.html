@@ -606,6 +606,7 @@
   }
   .toast.show { opacity: 1; }
 </style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app" id="app">
@@ -808,7 +809,7 @@
         
     <label class="login-field">
       <svg class="ico" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
-      <input id="loginUser" placeholder="Usuario" autocomplete="username" autocapitalize="none">
+      <input id="loginUser" type="email" placeholder="Mail" autocomplete="email" autocapitalize="none">
     </label>
     <label class="login-field">
       <svg class="ico" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
@@ -850,6 +851,23 @@
 <script>
 (function () {
   let KEY = 'agenda-web-v1';
+  // ---------- Nube (Supabase) ----------
+  const SB_URL = 'https://ifxwbcbzyrwjsdgooiph.supabase.co';
+  const SB_KEY = 'sb_publishable_9MY2NTiN8HIYJQuOu4wzSw_Y0FLw6Qx';
+  const sb = window.supabase.createClient(SB_URL, SB_KEY);
+  let sbUserId = null;
+  let remoteReady = false;
+  let pushTimer = null;
+  function pushRemote() {
+    if (!remoteReady || !sbUserId) return;
+    clearTimeout(pushTimer);
+    pushTimer = setTimeout(async () => {
+      try {
+        const r = await sb.from('agenda_datos').upsert({ user_id: sbUserId, datos: data, actualizado: new Date().toISOString() });
+        if (r.error) toast('No se pudo guardar en la nube. Revisá la conexión.');
+      } catch (e) { toast('No se pudo guardar en la nube. Revisá la conexión.'); }
+    }, 800);
+  }
   const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
   const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
   const CHECK = '<svg viewBox="0 0 24 24"><path d="M5 12l5 5 9-10"/></svg>';
@@ -878,6 +896,7 @@
       const s = JSON.stringify(data);
       localStorage.setItem(KEY, s);
       if (localStorage.getItem(KEY) !== s) throw new Error('verificación fallida');
+      pushRemote();
     } catch (e) {
       toast('No se pudo guardar en este navegador. Avisame si pasa.');
     }
@@ -1705,34 +1724,57 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     loginMode = m;
             loginErr.textContent = '';
   }
-  function enterAgenda(user) {
-    try { localStorage.setItem('agenda-session', user); } catch (e) {}
-    KEY = 'agenda-web-v1:' + user;
+  async function enterAgenda(uid, email) {
+    sbUserId = uid;
+    remoteReady = false;
+    KEY = 'agenda-web-v1:' + uid;
     data = loadData();
     loginEl.hidden = true;
     loginPass.value = '';
     loginErr.textContent = '';
     renderAll();
+    try {
+      const r = await sb.from('agenda_datos').select('datos').eq('user_id', uid).maybeSingle();
+      if (r.error) throw r.error;
+      const d = r.data && r.data.datos;
+      if (d && typeof d === 'object') {
+        data = { items: d.items || {}, notes: d.notes || {}, photos: d.photos || {}, drawings: d.drawings || {}, profile: d.profile || null, flower: d.flower || null, theme: d.theme || 'tiza', sound: !!d.sound };
+        try { localStorage.setItem(KEY, JSON.stringify(data)); } catch (e) {}
+        renderAll();
+      }
+      remoteReady = true;
+    } catch (e) {
+      toast('No pude traer tus datos de la nube. Revisá la conexión.');
+    }
   }
-  loginBtn.addEventListener('click', () => {
+  function loginMsg(err) {
+    const m = (err && err.message) || '';
+    if (/invalid login/i.test(m)) return 'Mail o contraseña incorrectos. Probá de nuevo.';
+    if (/already registered|already exists|already been registered/i.test(m)) return 'Ese mail ya tiene cuenta. Ingresá con tu contraseña.';
+    if (/password/i.test(m)) return 'La contraseña tiene que tener al menos 6 caracteres.';
+    if (/email/i.test(m)) return 'Escribí un mail válido.';
+    if (/fetch|network/i.test(m)) return 'No hay conexión. Revisá internet y probá de nuevo.';
+    return 'No se pudo ingresar. Probá de nuevo en un rato.';
+  }
+  loginBtn.addEventListener('click', async () => {
+    const mode = loginMode; // se lee antes de cualquier espera
     const u = loginUser.value.trim().toLowerCase();
     const p = loginPass.value;
-    if (!u || !p) { loginErr.textContent = 'Completá usuario y contraseña.'; return; }
-    const acc = loadAccounts();
-    if (loginMode === 'create') {
-      if (acc[u]) { setLoginMode('login'); loginErr.textContent = 'Ese usuario ya existe. Ingresá con tu contraseña.'; return; }
-      acc[u] = p;
-      saveAccounts(acc);
-      // Si ya había datos de antes de tener cuentas, la primera cuenta los hereda
-      if (!localStorage.getItem('agenda-web-v1:' + u) && localStorage.getItem('agenda-web-v1')) {
-        localStorage.setItem('agenda-web-v1:' + u, localStorage.getItem('agenda-web-v1'));
-      }
-      enterAgenda(u);
+    if (!u || !p) { loginErr.textContent = 'Completá el mail y la contraseña.'; return; }
+    loginErr.textContent = 'Un momento...';
+    let res;
+    try {
+      res = mode === 'create'
+        ? await sb.auth.signUp({ email: u, password: p })
+        : await sb.auth.signInWithPassword({ email: u, password: p });
+    } catch (e) { loginErr.textContent = loginMsg(e); return; }
+    if (res.error) { loginErr.textContent = loginMsg(res.error); return; }
+    if (mode === 'create' && !res.data.session) {
+      loginErr.textContent = 'Te mandamos un mail. Tocá el link que te llega y después ingresá.';
       return;
     }
-    if (!acc[u]) { loginErr.textContent = 'Ese usuario no existe. Si sos nuevo, tocá SOY NUEVO.'; return; }
-    if (acc[u] !== p) { loginErr.textContent = 'La contraseña no coincide. Probá de nuevo.'; return; }
-    enterAgenda(u);
+    if (!res.data.user) { loginErr.textContent = 'No se pudo ingresar. Probá de nuevo.'; return; }
+    enterAgenda(res.data.user.id, res.data.user.email);
   });
   loginPass.addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
   // Al terminar de escribir la contraseña (al salir del campo), entra sin tocar el botón
@@ -1751,10 +1793,11 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   $('#forgotUser').addEventListener('click', soon);
   $('#forgotPass').addEventListener('click', soon);
   // Si ya hay cuentas guardadas, el botón principal es Ingresar; si no, Crear cuenta
-  setLoginMode(Object.keys(loadAccounts()).length ? 'login' : 'create');
+  setLoginMode('login');
   // Si la sesión quedó recordada, entra directo
-  const savedUser = (() => { try { return localStorage.getItem('agenda-session'); } catch (e) { return null; } })();
-  if (savedUser && loadAccounts()[savedUser]) { loginEl.hidden = true; setTimeout(() => enterAgenda(savedUser), 0); }
+  sb.auth.getSession().then(({ data: { session } }) => {
+    if (session && session.user) enterAgenda(session.user.id, session.user.email);
+  });
 
   // Florcita de la pantalla de ingreso: muestra cuatro diseños para probar, sin guardar nada
   let flowerPreview = false;
@@ -1795,8 +1838,8 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   $('#checkStart').addEventListener('click', () => $('#addPill').click());
   // Tocar el logo de la tapa muestra 4 stickers para elegir (vista previa, sin cuenta)
   $('#loginLogo').addEventListener('click', () => { flowerPreview = true; openFlowerPicker(); });
-  $('#logoutBtn').addEventListener('click', () => {
-    try { localStorage.removeItem('agenda-session'); } catch (e) {}
+  $('#logoutBtn').addEventListener('click', async () => {
+    try { await sb.auth.signOut(); } catch (e) {}
     location.reload();
   });
   // Flechita y barra de NOTAS: tocar sube la hoja, y si ya está arriba, la baja
