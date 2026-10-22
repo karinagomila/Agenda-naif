@@ -822,6 +822,7 @@
     </div>
     <button class="login-btn" id="loginBtn" type="button">INGRESAR</button>
     <button class="login-sub" id="loginSub" type="button">SOY NUEVO</button>
+    <button class="login-sub" id="loginGoogle" type="button">ENTRAR CON GOOGLE</button>
     <p class="error" id="loginError"></p>
   </div>
 </div>
@@ -1791,6 +1792,12 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   });
   $('#loginEye').addEventListener('click', () => {
     loginPass.type = loginPass.type === 'password' ? 'text' : 'password';
+  });
+  $('#loginGoogle').addEventListener('click', async () => {
+    if (!sb) { loginErr.textContent = 'No se pudo conectar. Revisá la conexión a internet y probá de nuevo.'; return; }
+    loginErr.textContent = 'Un momento...';
+    const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname } });
+    if (r.error) loginErr.textContent = 'No se pudo entrar con Google. Probá de nuevo.';
   });
   $('#forgotUser').addEventListener('click', soon);
   $('#forgotPass').addEventListener('click', soon);
