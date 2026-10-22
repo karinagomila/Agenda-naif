@@ -854,12 +854,13 @@
   // ---------- Nube (Supabase) ----------
   const SB_URL = 'https://ifxwbcbzyrwjsdgooiph.supabase.co';
   const SB_KEY = 'sb_publishable_9MY2NTiN8HIYJQuOu4wzSw_Y0FLw6Qx';
-  const sb = window.supabase.createClient(SB_URL, SB_KEY);
+  // Si la librería no carga (red bloqueada), la agenda sigue andando y avisa en vez de quedarse muda
+  const sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
   let sbUserId = null;
   let remoteReady = false;
   let pushTimer = null;
   function pushRemote() {
-    if (!remoteReady || !sbUserId) return;
+    if (!sb || !remoteReady || !sbUserId) return;
     clearTimeout(pushTimer);
     pushTimer = setTimeout(async () => {
       try {
@@ -1761,6 +1762,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     const u = loginUser.value.trim().toLowerCase();
     const p = loginPass.value;
     if (!u || !p) { loginErr.textContent = 'Completá el mail y la contraseña.'; return; }
+    if (!sb) { loginErr.textContent = 'No se pudo conectar. Revisá la conexión a internet y probá de nuevo.'; return; }
     loginErr.textContent = 'Un momento...';
     let res;
     try {
@@ -1783,9 +1785,9 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   });
   loginSub.addEventListener('click', () => {
     // SOY NUEVO crea la cuenta con el usuario y la clave que escribiste; los botones no cambian de nombre
-    setLoginMode('create');
+    loginMode = 'create';
     loginBtn.click();
-    setLoginMode('login');
+    loginMode = 'login';
   });
   $('#loginEye').addEventListener('click', () => {
     loginPass.type = loginPass.type === 'password' ? 'text' : 'password';
@@ -1795,7 +1797,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   // Si ya hay cuentas guardadas, el botón principal es Ingresar; si no, Crear cuenta
   setLoginMode('login');
   // Si la sesión quedó recordada, entra directo
-  sb.auth.getSession().then(({ data: { session } }) => {
+  if (sb) sb.auth.getSession().then(({ data: { session } }) => {
     if (session && session.user) enterAgenda(session.user.id, session.user.email);
   });
 
