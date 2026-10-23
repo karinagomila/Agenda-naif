@@ -1959,9 +1959,14 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
         btn.innerHTML = hidden ? EYE_OPEN : EYE_CLOSED;
       });
       canvas.appendChild(btn);
+      return btn;
     };
     mk('loginPass', 946, 's-login');
     mk('loginPassNew', 1026, 's-create');
+    // Ojito del campo de arriba: solo se muestra en "nueva contraseña"
+    const eyeTop = mk('loginUserNew', 860, '');
+    eyeTop.id = 'eyeTopNew';
+    eyeTop.hidden = true;
   })();
   showScreen('login');
   // Si la sesión quedó recordada, entra directo
@@ -1985,6 +1990,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     $('#loginBtn').textContent = 'CREAR Y ENTRAR';
     loginPlace($('#loginBtn'), 316, 1121, 305, 82);
     $('#chooseBack').hidden = true;
+    $('#eyeTopNew').hidden = false;
     $('#loginScreen').style.setProperty('background-color', '#E6D5C1', 'important');
     $('#loginCanvas').style.background = '#E6D5C1';
     const icons = document.querySelectorAll('#loginCanvas img.s-create');
