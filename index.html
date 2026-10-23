@@ -881,11 +881,11 @@
     <div class="theme-row" id="themeRow"></div>
     <div class="acc-list">
       <button class="acc-btn" id="renameBtn" type="button">Cambiar nombre de la cuenta</button>
-      <button class="acc-btn" type="button">Cambiar contraseña</button>
+      <button class="acc-btn" id="changePassBtn" type="button">Cambiar contraseña</button>
       <button class="acc-btn" type="button">Suscribirme</button>
       <button class="acc-btn" type="button">Cambiar método de pago</button>
       <button class="acc-btn" id="logoutBtn" type="button">Cerrar sesión</button>
-      <button class="acc-btn danger" type="button">Borrar toda la agenda</button>
+      <button class="acc-btn danger" id="deleteAllBtn" type="button">Borrar toda la agenda</button>
     </div>
     <div class="cal-foot acc-close"><span></span><button class="btn ghost" id="accountClose" type="button">Cerrar</button></div>
   </div>
@@ -1807,7 +1807,37 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   });
   $('#accountClose').addEventListener('click', () => { $('#accountModal').hidden = true; });
   $('#accountModal').addEventListener('click', (e) => { if (e.target === $('#accountModal')) $('#accountModal').hidden = true; });
-  document.querySelectorAll('.acc-btn:not(#renameBtn)').forEach((b) => b.addEventListener('click', soon));
+  // Acciones de Personalizar
+  const closeAccount = () => { $('#accountModal').hidden = true; };
+  $('#logoutBtn').addEventListener('click', async () => {
+    closeAccount();
+    try { if (sb) await sb.auth.signOut(); } catch (e) {}
+    sbUserId = null;
+    remoteReady = false;
+    gToken = null;
+    loginPass.value = '';
+    loginErr.textContent = '';
+    showScreen('login');
+    loginEl.hidden = false;
+  });
+  $('#changePassBtn').addEventListener('click', async () => {
+    if (!sb) { toast('No se pudo conectar. Revisá la conexión a internet.'); return; }
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user || !user.email) { toast('No encontramos tu mail. Volvé a ingresar.'); return; }
+      const r = await sb.auth.resetPasswordForEmail(user.email, { redirectTo: window.location.origin + window.location.pathname });
+      toast(r.error ? 'No se pudo enviar el mail. Probá de nuevo en un rato.' : 'Te mandamos un mail para cambiar la contraseña.');
+    } catch (e) { toast('No se pudo enviar el mail. Probá de nuevo en un rato.'); }
+  });
+  $('#deleteAllBtn').addEventListener('click', () => {
+    if (!window.confirm('¿Borrar toda la agenda? Esto no se puede deshacer.')) return;
+    data = { ...data, items: {}, notes: {}, photos: {}, drawings: {} };
+    saveData();
+    renderAll();
+    closeAccount();
+    toast('Se borró toda la agenda.');
+  });
+  document.querySelectorAll('.acc-btn:not(#renameBtn):not(#logoutBtn):not(#changePassBtn):not(#deleteAllBtn)').forEach((b) => b.addEventListener('click', soon));
 
   // ---------- Ingreso (prueba): cuentas guardadas en este navegador ----------
   const ACCOUNTS_KEY = 'agenda-web-accounts';
