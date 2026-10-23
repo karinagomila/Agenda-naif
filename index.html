@@ -1862,8 +1862,8 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   loginBtn.addEventListener('click', async () => {
     const mode = loginMode; // se lee antes de cualquier espera
     if (mode === 'recovery') {
-      const nueva = $('#loginPassNew').value;
-      const confirmar = $('#loginUserNew').value;
+      const nueva = $('#loginUserNew').value; // campo de arriba: escribir nueva
+      const confirmar = $('#loginPassNew').value; // campo de abajo: confirmar
       if (nueva.length < 6) { loginErr.textContent = 'La contraseña tiene que tener al menos 6 caracteres.'; return; }
       if (nueva !== confirmar) { loginErr.textContent = 'Las contraseñas no coinciden.'; return; }
       if (!sb) { loginErr.textContent = 'No se pudo conectar. Revisá la conexión a internet y probá de nuevo.'; return; }
@@ -1871,6 +1871,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
       const r = await sb.auth.updateUser({ password: nueva });
       if (r.error || !r.data || !r.data.user) { loginErr.textContent = 'No se pudo guardar la contraseña. Pedí un link nuevo.'; return; }
       recoveryMode = false;
+      setRecFlag(false);
       history.replaceState(null, '', window.location.pathname);
       enterAgenda(r.data.user.id, r.data.user.email);
       return;
@@ -1965,18 +1966,22 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   showScreen('login');
   // Si la sesión quedó recordada, entra directo
   // Link del mail para cambiar la contraseña: se muestra "nueva contraseña", no la agenda
-  let recoveryMode = /type=recovery/.test(window.location.hash);
+  // Se guarda en el navegador para que, si recarga la página antes de cambiar la contraseña, siga en "nueva contraseña"
+  const readRecFlag = () => { try { return localStorage.getItem('agenda-recovery') === '1'; } catch (e) { return false; } };
+  const setRecFlag = (on) => { try { if (on) localStorage.setItem('agenda-recovery', '1'); else localStorage.removeItem('agenda-recovery'); } catch (e) {} };
+  let recoveryMode = /type=recovery/.test(window.location.hash) || readRecFlag();
   function enterRecovery() {
     recoveryMode = true;
+    setRecFlag(true);
     showScreen('create');
     loginMode = 'recovery';
     $('#loginTitle').textContent = 'CREAR NUEVA USUARIO Y CONTRASEÑA';
     $('#loginTitle').hidden = false;
     $('#loginUserNew').type = 'password';
-    $('#loginUserNew').placeholder = 'CONFIRMAR NUEVA CONTRASEÑA';
+    $('#loginUserNew').placeholder = 'ESCRIBIR NUEVA CONTRASEÑA';
     $('#loginUserNew').value = '';
     $('#loginPassNew').value = '';
-    $('#loginPassNew').placeholder = 'ESCRIBIR NUEVA CONTRASEÑA';
+    $('#loginPassNew').placeholder = 'CONFIRMAR NUEVA CONTRASEÑA';
     $('#loginBtn').textContent = 'CREAR Y ENTRAR';
     loginPlace($('#loginBtn'), 316, 1121, 305, 82);
     $('#chooseBack').hidden = true;
