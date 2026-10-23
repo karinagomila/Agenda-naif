@@ -710,7 +710,7 @@
       </div>
       <div class="notes-body" id="notesBody">
       <textarea id="notes" spellcheck="true"></textarea>
-      <canvas id="drawCanvas" class="draw-canvas" hidden></canvas>
+      <canvas id="drawCanvas" class="draw-canvas"></canvas>
     </div>
     </section>
 
@@ -997,22 +997,55 @@
     $('#month').textContent = MONTHS[current.getMonth()].toUpperCase() + ' ' + current.getFullYear();
   }
 
+  // ---------- Citas de Google Calendar (solo lectura) ----------
+  let gToken = null;
+  const calCache = {};
+  async function fetchCalDay(k) {
+    if (!gToken) return;
+    const d = fromKey(k);
+    const next = addDays(d, 1);
+    const url = 'https://www.googleapis.com/calendar/v3/calendars/primary/events?singleEvents=true&orderBy=startTime'
+      + '&timeMin=' + encodeURIComponent(d.toISOString()) + '&timeMax=' + encodeURIComponent(next.toISOString());
+    try {
+      const res = await fetch(url, { headers: { Authorization: 'Bearer ' + gToken } });
+      if (res.status === 401) { gToken = null; delete calCache[k]; return; }
+      if (!res.ok) { calCache[k] = []; return; }
+      const j = await res.json();
+      calCache[k] = (j.items || []).filter((ev) => ev.status !== 'cancelled').map((ev) => {
+        const hora = ev.start && ev.start.dateTime
+          ? (() => { const t = new Date(ev.start.dateTime); return String(t.getHours()).padStart(2, '0') + ':' + String(t.getMinutes()).padStart(2, '0'); })()
+          : '';
+        return { id: 'g_' + ev.id, texto: ev.summary || '(sin título)', hora, gcal: true, creado: 0 };
+      });
+    } catch (e) { calCache[k] = []; return; }
+    if (k === currentKey()) renderList();
+  }
+
   function renderList() {
     renderAlert();
-    const items = sortItems(data.items[currentKey()] || []);
+    const k = currentKey();
+    if (gToken && calCache[k] === undefined) { calCache[k] = null; fetchCalDay(k); }
+    const gItems = Array.isArray(calCache[k]) ? calCache[k] : [];
+    const items = sortItems([...(data.items[k] || []), ...gItems]);
     const list = $('#list');
     if (!items.length) {
       list.innerHTML = '<p class="empty">No hay citas ni tareas para este día.</p>';
       return;
     }
     list.innerHTML = items.map((it, i) => `
+      ${it.gcal ? `
+      <div class="row gcal">
+        <span class="time">${it.hora ? esc(it.hora) : ''}</span>
+        <span class="bar" style="background:var(--blue)"></span>
+        <span class="text">${esc(it.texto)}</span>
+      </div>` : `
       <div class="row" data-id="${esc(it.id)}">
         <button class="check ${it.completada ? 'done' : ''}" data-id="${esc(it.id)}"
                 aria-label="Marcar como completada" aria-pressed="${!!it.completada}">${it.completada ? CHECK : ''}</button>
         <span class="time">${it.hora ? esc(it.hora) : ''}</span>
         <span class="bar" style="background:${i % 2 === 0 ? 'var(--blue)' : 'var(--pink)'}"></span>
         <span class="text ${it.completada ? 'done' : ''}">${esc(it.texto)}</span>
-      </div>`).join('');
+      </div>`}`).join('');
   }
 
   function renderNotes() {
@@ -1283,6 +1316,7 @@
   $('#list').addEventListener('click', (e) => {
     const row = e.target.closest('.row');
     const btn = e.target.closest('.check');
+    if (row && row.classList.contains('gcal')) return;
     if (row && !btn) { openItemMenu(row.dataset.id); return; }
     if (!btn) return;
     const it = (data.items[currentKey()] || []).find((x) => x.id === btn.dataset.id);
@@ -1305,7 +1339,7 @@
     // Al bajar el panel, se sale del modo dibujo para poder moverlo
     if (s !== 'open' && drawing) {
       drawing = false;
-      drawCanvas.hidden = true;
+      drawCanvas.style.pointerEvents = 'none';
       $('#notes').hidden = false;
       clearDrawBtn.hidden = true;
       $('#toolPencil').classList.remove('active');
@@ -1585,6 +1619,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   }
   function redrawStrokes() {
     const r = drawCanvas.getBoundingClientRect();
+    if (!r.width || !r.height) return;
     dctx.clearRect(0, 0, r.width, r.height);
     drawStyle();
     (data.drawings[currentKey()] || []).forEach((s) => {
@@ -1599,6 +1634,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   }
   function sizeDrawCanvas() {
     const r = drawCanvas.getBoundingClientRect();
+    if (!r.width || !r.height) return;
     const dpr = window.devicePixelRatio || 1;
     drawCanvas.width = Math.round(r.width * dpr);
     drawCanvas.height = Math.round(r.height * dpr);
@@ -1650,7 +1686,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   // Lápiz: entra y sale del modo dibujo. Al salir vuelve la escritura con teclado.
   function setDrawing(on) {
     drawing = on;
-    drawCanvas.hidden = !on;
+    drawCanvas.style.pointerEvents = on ? 'auto' : 'none';
     // El texto escrito con teclado sigue visible debajo del dibujo
     clearDrawBtn.hidden = !on;
     $('#toolPencil').classList.toggle('active', on);
@@ -1662,7 +1698,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
       setNotes('normal');
     }
   }
-  const drawResizeObserver = new ResizeObserver(() => { if (drawing) sizeDrawCanvas(); });
+  const drawResizeObserver = new ResizeObserver(() => sizeDrawCanvas());
   drawResizeObserver.observe(drawCanvas);
 
   // Botón X de NOTAS: cierra el panel ampliado y vuelve al tamaño normal
@@ -1676,7 +1712,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   $('#textMode').addEventListener('click', () => {
     textOn = true;
     drawing = false;
-    drawCanvas.hidden = true;
+    drawCanvas.style.pointerEvents = 'none';
     $('#toolPencil').classList.remove('active');
     setNotes('open');
     $('#notes').focus();
@@ -1869,7 +1905,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   document.querySelectorAll('.js-google').forEach((btn) => btn.addEventListener('click', async () => {
     if (!sb) { loginErr.textContent = 'No se pudo conectar. Revisá la conexión a internet y probá de nuevo.'; return; }
     loginErr.textContent = 'Un momento...';
-    const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname } });
+    const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname, scopes: 'https://www.googleapis.com/auth/calendar.readonly' } });
     if (r.error) loginErr.textContent = 'No se pudo entrar con Google. Probá de nuevo.';
   }));
   $('#forgotUser').addEventListener('click', soon);
@@ -1903,7 +1939,11 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   showScreen('login');
   // Si la sesión quedó recordada, entra directo
   if (sb) sb.auth.getSession().then(({ data: { session } }) => {
+    if (session && session.provider_token) gToken = session.provider_token;
     if (session && session.user) enterAgenda(session.user.id, session.user.email);
+  });
+  if (sb) sb.auth.onAuthStateChange((_event, session) => {
+    if (session && session.provider_token) { gToken = session.provider_token; renderList(); }
   });
 
   // Florcita de la pantalla de ingreso: muestra cuatro diseños para probar, sin guardar nada
