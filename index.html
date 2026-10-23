@@ -811,6 +811,8 @@
     #loginScreen button{transition:filter .12s ease, transform .12s ease;}
     #loginScreen button:active{filter:brightness(.7);transform:scale(.98);}
     #loginScreen input:focus{outline:none;}
+    #loginScreen input{caret-color:#FEFEFE;color:#FEFEFE;}
+    #loginScreen input:-webkit-autofill,#loginScreen input:-webkit-autofill:hover,#loginScreen input:-webkit-autofill:focus{-webkit-box-shadow:0 0 0 1000px #AFB890 inset !important;box-shadow:0 0 0 1000px #AFB890 inset !important;-webkit-text-fill-color:#FEFEFE !important;caret-color:#FEFEFE;transition:background-color 9999s ease-in-out 0s;}
   </style>
   <div id="loginCanvas" style="background:#F5EFE9;position:relative;width:330px;aspect-ratio:936/1662;container-type:inline-size;overflow:hidden;flex:none;margin:auto;">
     <div id="loginCircle" hidden></div>
@@ -830,7 +832,7 @@
     <div class="s-login" style="position:absolute;left:8.013cqw;top:93.590cqw;width:84.081cqw;height:14.957cqw;border-radius:999px;background:#AFB890;"></div>
     <img class="s-login" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADQAAABGCAYAAACDkrchAAACO0lEQVR42u3aO2gUQRgA4E8jmPgg2NgIiSCI2NikSBVRwSIi+CA+EpQUloqCnZ2VKIKN9hJFC1FBwcLWFKazEhJCihRXWJhojChewOJWOI5L5u683cuE+bvZnePm25nZf3Z2N127OWIjxWYbLBIogQqOLU3WP4ZT6Gvht81EGXN4ick8QL14huGCL/gNvMJlLLcL1IU3GOrQKDqDbpxo1xwa6yDmXwzjdLt6aKymPIl7+JMjoAe3MFB17AJetwO0v6Z8BdMF9EoJH9doR8tDrqemvFDQMFsItCMl1gRKoARKoARKoARKoARKoARKoAafWHuxt06dQ/haQNv6asrd2X/PYakZ0C48wsgq59936OL345PKnt1TXFVna6u2wV1ZgwfW+agaz4BHQ3Po4jrHVMcRnAyBDkd2DxgKgbZFBtqR8lACJVA8oEXcztLAHgziDn50aunzPzGN45ivOlbCFB5nybs/lh4qq7ykml/l/AzOxzTkXuBzoM4U3sUCavQl74dYQI1O+uVYQAcarHcwFtAotgbqbM9uHFGA+nE3UOchdseUWK9jIuuJ6tip8nXIeIwrhUvZ6qA6BvMaakWt5b7VlH/Gvjj9HgBGB1oMAKMfcksxg37h90bqoXrzZSWDRvc8RGXr9kHRT6x5gnpVvkhMewoJlEARg1Yia385BJqJDDQbAk3knfjanLifh0DzOJfXBkabMWfxpZHE+lblk+JR7Ms5+bYyZ2bxpB5mrZVCCffTbTuBEigYfwEGCFoj3TT1cQAAAABJRU5ErkJggg==" style="position:absolute;left:14.957cqw;top:97.756cqw;width:5.556cqw;height:7.479cqw;object-fit:contain;" />
     <span class="s-login" style="position:absolute;left:22.329cqw;top:96.581cqw;width:0.641cqw;height:8.868cqw;background:#6D7355;border-radius:3px;"></span>
-    <label class="s-login" style="position:absolute;left:25.214cqw;top:93.590cqw;width:64.103cqw;height:14.957cqw;display:flex;align-items:center;margin:0;">
+    <label class="s-login" style="position:absolute;left:25.214cqw;top:93.590cqw;width:57.692cqw;height:14.957cqw;display:flex;align-items:center;margin:0;">
       <input id="loginPass" type="password" placeholder="CONTRASEÑA" autocomplete="current-password" autocapitalize="none" style="width:100%;min-width:0;height:100%;border:0;background:transparent;outline:none;color:#FEFEFE;font-family:'Oswald',sans-serif;font-weight:500;font-size:3.632cqw;padding:0;" />
     </label>
     <div class="s-login" id="loginLinks" style="position:absolute;left:29.915cqw;top:109.936cqw;width:40.171cqw;height:3.205cqw;display:flex;justify-content:center;align-items:center;">
@@ -846,7 +848,7 @@
     <div class="s-create" style="position:absolute;left:7.906cqw;top:102.137cqw;width:84.081cqw;height:14.957cqw;border-radius:999px;background:#AFB890;"></div>
     <img class="s-create" alt="" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAADQAAABGCAYAAACDkrchAAACO0lEQVR42u3aO2gUQRgA4E8jmPgg2NgIiSCI2NikSBVRwSIi+CA+EpQUloqCnZ2VKIKN9hJFC1FBwcLWFKazEhJCihRXWJhojChewOJWOI5L5u683cuE+bvZnePm25nZf3Z2N127OWIjxWYbLBIogQqOLU3WP4ZT6Gvht81EGXN4ick8QL14huGCL/gNvMJlLLcL1IU3GOrQKDqDbpxo1xwa6yDmXwzjdLt6aKymPIl7+JMjoAe3MFB17AJetwO0v6Z8BdMF9EoJH9doR8tDrqemvFDQMFsItCMl1gRKoARKoARKoARKoARKoARKoAafWHuxt06dQ/haQNv6asrd2X/PYakZ0C48wsgq59936OL345PKnt1TXFVna6u2wV1ZgwfW+agaz4BHQ3Po4jrHVMcRnAyBDkd2DxgKgbZFBtqR8lACJVA8oEXcztLAHgziDn50aunzPzGN45ivOlbCFB5nybs/lh4qq7ykml/l/AzOxzTkXuBzoM4U3sUCavQl74dYQI1O+uVYQAcarHcwFtAotgbqbM9uHFGA+nE3UOchdseUWK9jIuuJ6tip8nXIeIwrhUvZ6qA6BvMaakWt5b7VlH/Gvjj9HgBGB1oMAKMfcksxg37h90bqoXrzZSWDRvc8RGXr9kHRT6x5gnpVvkhMewoJlEARg1Yia385BJqJDDQbAk3knfjanLifh0DzOJfXBkabMWfxpZHE+lblk+JR7Ms5+bYyZ2bxpB5mrZVCCffTbTuBEigYfwEGCFoj3TT1cQAAAABJRU5ErkJggg==" style="position:absolute;left:14.957cqw;top:106.303cqw;width:5.556cqw;height:7.479cqw;object-fit:contain;" />
     <span class="s-create" style="position:absolute;left:22.329cqw;top:105.128cqw;width:0.641cqw;height:8.868cqw;background:#6D7355;border-radius:3px;"></span>
-    <label class="s-create" style="position:absolute;left:25.214cqw;top:102.137cqw;width:64.103cqw;height:14.957cqw;display:flex;align-items:center;margin:0;">
+    <label class="s-create" style="position:absolute;left:25.214cqw;top:102.137cqw;width:57.692cqw;height:14.957cqw;display:flex;align-items:center;margin:0;">
       <input id="loginPassNew" type="password" placeholder="CONTRASEÑA" autocomplete="new-password" autocapitalize="none" style="width:100%;min-width:0;height:100%;border:0;background:transparent;outline:none;color:#FEFEFE;font-family:'Oswald',sans-serif;font-weight:500;font-size:3.632cqw;padding:0;" />
     </label>
 
@@ -867,8 +869,8 @@
       <svg viewBox="0 0 51 27" style="position:absolute;left:2.564cqw;top:50%;transform:translateY(-50%);width:5.449cqw;height:2.885cqw;" aria-hidden="true"><path d="M0 13.5 L17 2 L17 8 L51 8 L51 19 L17 19 L17 25 Z" fill="#FC3281"/></svg>
       <span style="position:absolute;left:9.402cqw;top:0;bottom:0;display:flex;align-items:center;white-space:nowrap;color:#FC3281;">VOLVER</span>
     </button>
+    <p id="loginError" class="error" style="position:absolute;left:0;width:100%;top:166.667cqw;margin:0;text-align:center;color:#FC3281;font-family:'Oswald',sans-serif;font-size:3.205cqw;font-weight:500;line-height:1;"></p>
   </div>
-  <p id="loginError" class="error" style="margin:10px 16px 0;text-align:center;"></p>
 </div>
 
 <div class="modal" id="accountModal" hidden>
@@ -1857,6 +1859,30 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   $('#forgotPass').addEventListener('click', soon);
   // Si ya hay cuentas guardadas, el botón principal es Ingresar; si no, Crear cuenta
   setLoginMode('login');
+  // Ojito para ver u ocultar la contraseña (cerrado = oculta, abierto = se ve)
+  (function () {
+    const canvas = $('#loginCanvas');
+    const stroke = 'stroke="#FEFEFE" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none"';
+    const EYE_CLOSED = `<svg viewBox="0 0 24 24" width="100%" height="100%" ${stroke}><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M3 3l18 18"/></svg>`;
+    const EYE_OPEN = `<svg viewBox="0 0 24 24" width="100%" height="100%" ${stroke}><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>`;
+    const mk = (inputId, centerY, scls) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = scls;
+      btn.setAttribute('aria-label', 'Mostrar u ocultar contraseña');
+      btn.style.cssText = `position:absolute;left:${790 / 9.36}cqw;top:${(centerY - 22) / 9.36}cqw;width:${44 / 9.36}cqw;height:${44 / 9.36}cqw;background:none;border:0;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;`;
+      btn.innerHTML = EYE_CLOSED;
+      btn.addEventListener('click', () => {
+        const inp = $('#' + inputId);
+        const hidden = inp.type === 'password';
+        inp.type = hidden ? 'text' : 'password';
+        btn.innerHTML = hidden ? EYE_OPEN : EYE_CLOSED;
+      });
+      canvas.appendChild(btn);
+    };
+    mk('loginPass', 946, 's-login');
+    mk('loginPassNew', 1026, 's-create');
+  })();
   showScreen('login');
   // Si la sesión quedó recordada, entra directo
   if (sb) sb.auth.getSession().then(({ data: { session } }) => {
