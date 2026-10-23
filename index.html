@@ -1861,6 +1861,20 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   }
   loginBtn.addEventListener('click', async () => {
     const mode = loginMode; // se lee antes de cualquier espera
+    if (mode === 'recovery') {
+      const nueva = $('#loginPassNew').value;
+      const confirmar = $('#loginUserNew').value;
+      if (nueva.length < 6) { loginErr.textContent = 'La contraseña tiene que tener al menos 6 caracteres.'; return; }
+      if (nueva !== confirmar) { loginErr.textContent = 'Las contraseñas no coinciden.'; return; }
+      if (!sb) { loginErr.textContent = 'No se pudo conectar. Revisá la conexión a internet y probá de nuevo.'; return; }
+      loginErr.textContent = 'Un momento...';
+      const r = await sb.auth.updateUser({ password: nueva });
+      if (r.error || !r.data || !r.data.user) { loginErr.textContent = 'No se pudo guardar la contraseña. Pedí un link nuevo.'; return; }
+      recoveryMode = false;
+      history.replaceState(null, '', window.location.pathname);
+      enterAgenda(r.data.user.id, r.data.user.email);
+      return;
+    }
     const u = loginUser.value.trim().toLowerCase();
     const p = loginPass.value;
     if (!u || !p) { loginErr.textContent = 'Completá el mail y la contraseña.'; return; }
@@ -1949,13 +1963,32 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   })();
   showScreen('login');
   // Si la sesión quedó recordada, entra directo
+  // Link del mail para cambiar la contraseña: se muestra "nueva contraseña", no la agenda
+  let recoveryMode = /type=recovery/.test(window.location.hash);
+  function enterRecovery() {
+    recoveryMode = true;
+    showScreen('create');
+    loginMode = 'recovery';
+    $('#loginTitle').textContent = 'NUEVA CONTRASEÑA';
+    $('#loginTitle').hidden = false;
+    $('#loginUserNew').type = 'password';
+    $('#loginUserNew').placeholder = 'CONFIRMAR CONTRASEÑA';
+    $('#loginUserNew').value = '';
+    $('#loginPassNew').value = '';
+    $('#loginPassNew').placeholder = 'NUEVA CONTRASEÑA';
+    $('#loginBtn').textContent = 'GUARDAR';
+    $('#chooseBack').hidden = true;
+  }
+  if (recoveryMode) enterRecovery();
   if (sb) sb.auth.getSession().then(({ data: { session } }) => {
     if (session && session.provider_token) gToken = session.provider_token;
-    if (session && session.user) enterAgenda(session.user.id, session.user.email);
+    if (session && session.user && !recoveryMode) enterAgenda(session.user.id, session.user.email);
   });
-  if (sb) sb.auth.onAuthStateChange((_event, session) => {
+  if (sb) sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') { enterRecovery(); return; }
     if (session && session.provider_token) { gToken = session.provider_token; renderList(); }
   });
+  $('#loginUserNew').addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
 
   // Florcita de la pantalla de ingreso: muestra cuatro diseños para probar, sin guardar nada
   let flowerPreview = false;
