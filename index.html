@@ -1925,10 +1925,6 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   });
   $('#loginPass').addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
   $('#loginPassNew').addEventListener('keydown', (e) => { if (e.key === 'Enter') loginBtn.click(); });
-  // Al terminar de escribir la contraseña (al salir del campo), entra sin tocar el botón
-  loginPass.addEventListener('change', () => {
-    if (loginMode === 'login' && loginUser.value.trim() && loginPass.value) loginBtn.click();
-  });
   // Dos pantallas: ingreso (mail/Google/SOY NUEVO) y crear cuenta (con VOLVER)
   function showScreen(name) {
     const c = name === 'create';
