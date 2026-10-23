@@ -429,6 +429,12 @@
   }
   .acc-btn.danger { color: #B3261E; }
   button:active { filter: brightness(.8); }
+  /* Orden de la cabecera de NOTAS: flecha, T, lápiz, borrar, cerrar */
+  .notes-head #notesUp { order: 0 !important; }
+  .notes-head #textMode { order: 1 !important; margin-left: auto !important; }
+  .notes-head #notesPencil { order: 2 !important; margin-left: 8px !important; }
+  .notes-head #clearDraw { order: 3 !important; margin-left: 8px !important; }
+  .notes-head #closeNotes { order: 4 !important; margin-left: 8px !important; }
   .acc-close { margin-top: 12px; width: 100%; }
 
   /* Avisos de la cita: casilla "Avisame ese día" y recordatorio al abrir ese día */
