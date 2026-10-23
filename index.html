@@ -1852,8 +1852,8 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   }
   function loginMsg(err) {
     const m = (err && err.message) || '';
-    if (/invalid login/i.test(m)) return 'Mail o contraseña incorrectos. Probá de nuevo.';
-    if (/already registered|already exists|already been registered/i.test(m)) return 'Ese mail ya tiene cuenta. Ingresá con tu contraseña.';
+    if (/invalid login/i.test(m)) return 'Usuario o contraseña incorrectos. Probá de nuevo.';
+    if (/already registered|already exists|already been registered/i.test(m)) return 'Ya tenés cuenta. Volvé e ingresá con tu usuario y contraseña.';
     if (/password/i.test(m)) return 'La contraseña tiene que tener al menos 6 caracteres.';
     if (/email/i.test(m)) return 'Escribí un mail válido.';
     if (/fetch|network/i.test(m)) return 'No hay conexión. Revisá internet y probá de nuevo.';
@@ -1909,8 +1909,18 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     const r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin + window.location.pathname, scopes: 'https://www.googleapis.com/auth/calendar.readonly' } });
     if (r.error) loginErr.textContent = 'No se pudo entrar con Google. Probá de nuevo.';
   }));
-  $('#forgotUser').addEventListener('click', soon);
-  $('#forgotPass').addEventListener('click', soon);
+  $('#forgotUser').addEventListener('click', () => {
+    loginErr.textContent = 'Tu usuario es el mail con el que creaste la cuenta.';
+  });
+  $('#forgotPass').addEventListener('click', async () => {
+    const u = loginUser.value.trim().toLowerCase();
+    if (!u) { loginErr.textContent = 'Escribí tu usuario (tu mail) y tocá de nuevo.'; return; }
+    if (!sb) { loginErr.textContent = 'No se pudo conectar. Revisá la conexión a internet y probá de nuevo.'; return; }
+    try {
+      const r = await sb.auth.resetPasswordForEmail(u, { redirectTo: window.location.origin + window.location.pathname });
+      loginErr.textContent = r.error ? 'No se pudo enviar el mail. Probá de nuevo en un rato.' : 'Te mandamos un mail para cambiar la contraseña.';
+    } catch (e) { loginErr.textContent = 'No se pudo enviar el mail. Probá de nuevo en un rato.'; }
+  });
   // Si ya hay cuentas guardadas, el botón principal es Ingresar; si no, Crear cuenta
   setLoginMode('login');
   // Ojito para ver u ocultar la contraseña (cerrado = oculta, abierto = se ve)
