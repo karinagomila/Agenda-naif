@@ -1691,9 +1691,13 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     clearDrawBtn.hidden = !on;
     $('#toolPencil').classList.toggle('active', on);
     if (on) {
+      // Sin animación: el lienzo tiene que tener su tamaño final antes de dibujar
+      const notesEl = document.querySelector('.notes');
+      if (notesEl) notesEl.style.transition = 'none';
       setNotes('open');
       $('#notes').blur();
       sizeDrawCanvas();
+      if (notesEl) requestAnimationFrame(() => { notesEl.style.transition = ''; sizeDrawCanvas(); });
     } else {
       setNotes('normal');
     }
