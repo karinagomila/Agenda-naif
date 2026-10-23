@@ -428,6 +428,7 @@
     background: var(--btn); color: var(--ink); font: inherit; font-size: 17px; cursor: pointer;
   }
   .acc-btn.danger { color: #B3261E; }
+  button:active { filter: brightness(.8); }
   .acc-close { margin-top: 12px; width: 100%; }
 
   /* Avisos de la cita: casilla "Avisame ese día" y recordatorio al abrir ese día */
@@ -882,7 +883,7 @@
     <button class="sound-toggle" id="soundToggle" type="button" aria-label="Sonido de los botones"></button>
     <div class="theme-row" id="themeRow"></div>
     <div class="acc-list">
-      <button class="acc-btn" type="button">Cambiar nombre de la cuenta</button>
+      <button class="acc-btn" id="renameBtn" type="button">Cambiar nombre de la cuenta</button>
       <button class="acc-btn" type="button">Cambiar contraseña</button>
       <button class="acc-btn" type="button">Suscribirme</button>
       <button class="acc-btn" type="button">Cambiar método de pago</button>
@@ -1747,13 +1748,29 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
 
   // Botón de cuenta: su función se define en una etapa siguiente
   $('#toolAccount').addEventListener('click', () => {
-    $('#accUser').textContent = 'Usuario: ' + KEY.replace('agenda-web-v1:', '');
+    showAccName();
     renderThemeRow();
     $('#accountModal').hidden = false;
   });
+  // Nombre de la cuenta: lo elige la persona; si no hay nombre, no se muestra nada
+  function accUid() { return KEY.replace('agenda-web-v1:', ''); }
+  function getAccName() { try { return localStorage.getItem('agenda-nombre:' + accUid()) || ''; } catch (e) { return ''; } }
+  function showAccName() {
+    const n = getAccName();
+    $('#accUser').textContent = n;
+    $('#accUser').hidden = !n;
+  }
+  $('#renameBtn').addEventListener('click', () => {
+    const actual = getAccName();
+    const nuevo = window.prompt('Tu nombre:', actual);
+    if (nuevo === null) return;
+    const limpio = nuevo.trim().slice(0, 40);
+    try { if (limpio) localStorage.setItem('agenda-nombre:' + accUid(), limpio); else localStorage.removeItem('agenda-nombre:' + accUid()); } catch (e) {}
+    showAccName();
+  });
   $('#accountClose').addEventListener('click', () => { $('#accountModal').hidden = true; });
   $('#accountModal').addEventListener('click', (e) => { if (e.target === $('#accountModal')) $('#accountModal').hidden = true; });
-  document.querySelectorAll('.acc-btn').forEach((b) => b.addEventListener('click', soon));
+  document.querySelectorAll('.acc-btn:not(#renameBtn)').forEach((b) => b.addEventListener('click', soon));
 
   // ---------- Ingreso (prueba): cuentas guardadas en este navegador ----------
   const ACCOUNTS_KEY = 'agenda-web-accounts';
