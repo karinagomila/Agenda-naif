@@ -882,8 +882,6 @@
     <div class="acc-list">
       <button class="acc-btn" id="renameBtn" type="button">Cambiar nombre de la cuenta</button>
       <button class="acc-btn" id="changePassBtn" type="button">Cambiar contraseña</button>
-      <button class="acc-btn" type="button">Suscribirme</button>
-      <button class="acc-btn" type="button">Cambiar método de pago</button>
       <button class="acc-btn" id="logoutBtn" type="button">Cerrar sesión</button>
       <button class="acc-btn danger" id="deleteAllBtn" type="button">Borrar toda la agenda</button>
     </div>
@@ -2002,8 +2000,17 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   // Si la sesión quedó recordada, entra directo
   // Link del mail para cambiar la contraseña: se muestra "nueva contraseña", no la agenda
   // Se guarda en el navegador para que, si recarga la página antes de cambiar la contraseña, siga en "nueva contraseña"
-  const readRecFlag = () => { try { return localStorage.getItem('agenda-recovery') === '1'; } catch (e) { return false; } };
-  const setRecFlag = (on) => { try { if (on) localStorage.setItem('agenda-recovery', '1'); else localStorage.removeItem('agenda-recovery'); } catch (e) {} };
+  // Vence a los 15 minutos: así nunca queda trabada la entrada normal
+  const REC_MAX_MS = 15 * 60 * 1000;
+  const readRecFlag = () => {
+    try {
+      const t = Number(localStorage.getItem('agenda-recovery') || 0);
+      if (t && Date.now() - t < REC_MAX_MS) return true;
+      localStorage.removeItem('agenda-recovery');
+    } catch (e) {}
+    return false;
+  };
+  const setRecFlag = (on) => { try { if (on) localStorage.setItem('agenda-recovery', String(Date.now())); else localStorage.removeItem('agenda-recovery'); } catch (e) {} };
   let recoveryMode = /type=recovery/.test(window.location.hash) || readRecFlag();
   function enterRecovery() {
     recoveryMode = true;
