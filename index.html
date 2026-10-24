@@ -276,7 +276,7 @@
   .row-btns .menu-btn { flex: 1; }
 
   /* Fotografías del día: sobre la hoja, se mueven, se redimensionan y se eliminan */
-  .photo-layer { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
+  .photo-layer { position: absolute; inset: 0; z-index: 4; pointer-events: none; }
   .photo {
     position: absolute;
     pointer-events: auto;
@@ -621,6 +621,8 @@
 <style>#loginCanvas > :not(#loginLogo):not([alt="Agenda Mate"]){display:none !important;}</style>
 <style>
 #stickerLayer{position:absolute;inset:0;pointer-events:none;z-index:3;}
+#notesStickers{position:absolute;inset:0;pointer-events:none;z-index:1;}
+.app:not(.notes-open) #notesStickers{display:none !important;}
 .pegado{position:absolute;width:72px;height:72px;transform:translate(-50%,-50%);pointer-events:auto;touch-action:none;background:none;border:0;padding:0;cursor:grab;}
 .pegado img{width:100%;height:100%;object-fit:contain;pointer-events:none;}
 </style>
@@ -703,6 +705,7 @@
     </div>
 
     <section class="notes" id="notesPanel">
+      <div id="notesStickers"></div>
       <div class="notes-head" id="notesHead">
         <span class="notes-title">NOTAS</span>
         <button class="note-up" id="notesUp" type="button" aria-label="Abrir notas"><svg class="ico" viewBox="0 0 24 24"><path d="M12 19V5M6 11l6-6 6 6"/></svg></button>
@@ -1786,35 +1789,41 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     $('#stickerPaste').hidden = false;
   });
 
-  // ---------- Stickers pegados en la hoja de cada día ----------
+  // ---------- Stickers pegados en la hoja de cada día (y en las notas) ----------
   function renderStickers() {
     data.stickers = data.stickers || {};
+    const lista = data.stickers[currentKey()] || [];
+    const pintar = (cont, donde) => {
+      if (!cont) return;
+      cont.innerHTML = lista.map((s, i) => {
+        if ((s.where || 'page') !== donde) return '';
+        const d = FLOWER_DESIGNS.find((x) => x.id === s.id);
+        return d ? `<button class="pegado" data-i="${i}" style="left:${s.x}%;top:${s.y}%" aria-label="${d.name}"><img src="${d.src}" alt=""></button>` : '';
+      }).join('');
+    };
     let layer = $('#stickerLayer');
     if (!layer) { layer = document.createElement('div'); layer.id = 'stickerLayer'; $('#page').appendChild(layer); }
-    const lista = data.stickers[currentKey()] || [];
-    layer.innerHTML = lista.map((s, i) => {
-      const d = FLOWER_DESIGNS.find((x) => x.id === s.id);
-      return d ? `<button class="pegado" data-i="${i}" style="left:${s.x}%;top:${s.y}%" aria-label="${d.name}"><img src="${d.src}" alt=""></button>` : '';
-    }).join('');
+    pintar(layer, 'page');
+    pintar($('#notesStickers'), 'notes');
   }
   let stickerDrag = null;
-  $('#page').addEventListener('pointerdown', (e) => {
-    const el = e.target.closest('.pegado');
+  document.addEventListener('pointerdown', (e) => {
+    const el = e.target.closest && e.target.closest('.pegado');
     if (!el) return;
-    stickerDrag = { el, i: +el.dataset.i, x0: e.clientX, y0: e.clientY, moved: false, x: null, y: null };
+    stickerDrag = { el, box: el.parentElement.getBoundingClientRect(), i: +el.dataset.i, x0: e.clientX, y0: e.clientY, moved: false, x: null, y: null };
     try { el.setPointerCapture(e.pointerId); } catch (err) {}
   });
-  $('#page').addEventListener('pointermove', (e) => {
+  document.addEventListener('pointermove', (e) => {
     if (!stickerDrag) return;
     if (!stickerDrag.moved && Math.hypot(e.clientX - stickerDrag.x0, e.clientY - stickerDrag.y0) < 6) return;
     stickerDrag.moved = true;
-    const r = $('#page').getBoundingClientRect();
+    const r = stickerDrag.box;
     stickerDrag.x = Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100));
     stickerDrag.y = Math.min(100, Math.max(0, (e.clientY - r.top) / r.height * 100));
     stickerDrag.el.style.left = stickerDrag.x + '%';
     stickerDrag.el.style.top = stickerDrag.y + '%';
   });
-  const endDrag = () => {
+  const endStickerDrag = () => {
     if (!stickerDrag) return;
     const d = stickerDrag; stickerDrag = null;
     if (d.moved) {
@@ -1825,13 +1834,14 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
       $('#stickerMenu').hidden = false;
     }
   };
-  $('#page').addEventListener('pointerup', endDrag);
-  $('#page').addEventListener('pointercancel', endDrag);
+  document.addEventListener('pointerup', endStickerDrag);
+  document.addEventListener('pointercancel', endStickerDrag);
   $('#stickerPaste').addEventListener('click', () => {
     if (!pendingSticker) return;
     data.stickers = data.stickers || {};
     const k = currentKey();
-    (data.stickers[k] = data.stickers[k] || []).push({ id: pendingSticker, x: 50, y: 45 });
+    const donde = app.classList.contains('notes-open') ? 'notes' : 'page';
+    (data.stickers[k] = data.stickers[k] || []).push({ id: pendingSticker, x: 50, y: donde === 'notes' ? 40 : 45, where: donde });
     saveData();
     closeFlowerPicker();
     renderStickers();
