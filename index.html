@@ -618,7 +618,6 @@
   }
   .toast.show { opacity: 1; }
 </style>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
 <body>
 <div class="app" id="app">
@@ -811,7 +810,7 @@
   </div>
 </div>
 
-<div class="login" id="loginScreen" style="background:#F5EFE9;background-image:none;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;">
+<div class="login" id="loginScreen" hidden style="background:#F5EFE9;background-image:none;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;">
   <style>
     [hidden]{display:none !important;}
     #loginScreen input::placeholder{color:#FEFEFE;opacity:1;}
@@ -881,8 +880,6 @@
     <div class="theme-row" id="themeRow"></div>
     <div class="acc-list">
       <button class="acc-btn" id="renameBtn" type="button">Cambiar nombre de la cuenta</button>
-      <button class="acc-btn" id="changePassBtn" type="button">Cambiar contraseña</button>
-      <button class="acc-btn" id="logoutBtn" type="button">Cerrar sesión</button>
       <button class="acc-btn danger" id="deleteAllBtn" type="button">Borrar toda la agenda</button>
     </div>
     <div class="cal-foot acc-close"><span></span><button class="btn ghost" id="accountClose" type="button">Cerrar</button></div>
@@ -895,10 +892,8 @@
 (function () {
   let KEY = 'agenda-web-v1';
   // ---------- Nube (Supabase) ----------
-  const SB_URL = 'https://ifxwbcbzyrwjsdgooiph.supabase.co';
-  const SB_KEY = 'sb_publishable_9MY2NTiN8HIYJQuOu4wzSw_Y0FLw6Qx';
   // Si la librería no carga (red bloqueada), la agenda sigue andando y avisa en vez de quedarse muda
-  const sb = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
+  const sb = null; // sin cuenta ni base en línea: todo se guarda en este navegador
   let sbUserId = null;
   let remoteReady = false;
   let pushTimer = null;
@@ -1807,26 +1802,6 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   $('#accountModal').addEventListener('click', (e) => { if (e.target === $('#accountModal')) $('#accountModal').hidden = true; });
   // Acciones de Personalizar
   const closeAccount = () => { $('#accountModal').hidden = true; };
-  $('#logoutBtn').addEventListener('click', async () => {
-    closeAccount();
-    try { if (sb) await sb.auth.signOut(); } catch (e) {}
-    sbUserId = null;
-    remoteReady = false;
-    gToken = null;
-    loginPass.value = '';
-    loginErr.textContent = '';
-    showScreen('login');
-    loginEl.hidden = false;
-  });
-  $('#changePassBtn').addEventListener('click', async () => {
-    if (!sb) { toast('No se pudo conectar. Revisá la conexión a internet.'); return; }
-    try {
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user || !user.email) { toast('No encontramos tu mail. Volvé a ingresar.'); return; }
-      const r = await sb.auth.resetPasswordForEmail(user.email, { redirectTo: window.location.origin + window.location.pathname });
-      toast(r.error ? 'No se pudo enviar el mail. Probá de nuevo en un rato.' : 'Te mandamos un mail para cambiar la contraseña.');
-    } catch (e) { toast('No se pudo enviar el mail. Probá de nuevo en un rato.'); }
-  });
   $('#deleteAllBtn').addEventListener('click', () => {
     if (!window.confirm('¿Borrar toda la agenda? Esto no se puede deshacer.')) return;
     data = { ...data, items: {}, notes: {}, photos: {}, drawings: {} };
@@ -2079,10 +2054,6 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   $('#checkStart').addEventListener('click', () => $('#addPill').click());
   // Tocar el logo de la tapa muestra 4 stickers para elegir (vista previa, sin cuenta)
   $('#loginLogo').addEventListener('click', () => { flowerPreview = true; openFlowerPicker(); });
-  $('#logoutBtn').addEventListener('click', async () => {
-    try { await sb.auth.signOut(); } catch (e) {}
-    location.reload();
-  });
   // Flechita y barra de NOTAS: tocar sube la hoja, y si ya está arriba, la baja
   function toggleNotes() {
     setNotes(app.classList.contains('notes-open') ? 'collapsed' : 'open');
