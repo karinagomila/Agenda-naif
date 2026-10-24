@@ -815,7 +815,7 @@
 <div class="modal" id="flowerModal" hidden>
   <div class="sheet" role="dialog" aria-label="Elegir diseño de florcita">
     <div class="flower-grid" id="flowerGrid"></div>
-    <div class="cal-foot" style="gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button class="btn" id="stickerDeleteGo" type="button" hidden>Borrar</button><button class="btn" id="stickerChangeGo" type="button" hidden>Cambiar</button><button class="btn" id="stickerPaste" type="button" hidden>Pegar</button><button class="btn ghost" id="flowerClose">Cerrar</button></div>
+    <div class="cal-foot" style="gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button class="btn" id="stickerDeleteGo" type="button" hidden>Borrar</button><button class="btn" id="stickerPaste" type="button" hidden>Pegar</button><button class="btn ghost" id="flowerClose">Cerrar</button></div>
   </div>
 </div>
 
@@ -1473,6 +1473,9 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     if (!vv) return;
     const kb = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
     app.style.setProperty('--kb', kb + 'px');
+    // Con el teclado abierto, las notas se achican para que entren enteras encima del teclado (se ve lo que escribís)
+    if (kb > 0 && app.classList.contains('notes-open')) app.style.setProperty('--notes-h', Math.round(vv.height * 0.72) + 'px');
+    else app.style.removeProperty('--notes-h');
   }
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', updateKeyboardOffset);
@@ -1761,7 +1764,6 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   function updateStickerButtons() {
     const editando = replaceIdx !== null;
     $('#stickerPaste').hidden = !pendingSticker;
-    $('#stickerChangeGo').hidden = !(editando && pendingSticker);
     $('#stickerDeleteGo').hidden = !editando;
   }
   function closeFlowerPicker() { pendingSticker = null; replaceIdx = null; $('#flowerModal').hidden = true; }
@@ -1833,15 +1835,6 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     const donde = app.classList.contains('notes-open') ? 'notes' : 'page';
     (data.stickers[k] = data.stickers[k] || []).push({ id: pendingSticker, x: 50, y: donde === 'notes' ? 40 : 45, where: donde });
     saveData();
-    closeFlowerPicker();
-    renderStickers();
-  });
-  $('#stickerChangeGo').addEventListener('click', () => {
-    const k = currentKey();
-    if (pendingSticker && replaceIdx !== null && data.stickers && data.stickers[k] && data.stickers[k][replaceIdx]) {
-      data.stickers[k][replaceIdx].id = pendingSticker;
-      saveData();
-    }
     closeFlowerPicker();
     renderStickers();
   });
