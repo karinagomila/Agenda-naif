@@ -627,6 +627,17 @@
 .pegado img{width:100%;height:100%;object-fit:contain;pointer-events:none;}
 </style>
 <style>#loginCanvas{display:none !important;}</style>
+<style>
+#printArea{display:none;}
+@media print {
+  body > *:not(#printArea) { display:none !important; }
+  #printArea { display:block !important; color:#000; font-family:Arial,sans-serif; padding:16px; }
+  #printArea h1 { font-size:20px; margin:0 0 12px; }
+  #printArea h2 { font-size:15px; margin:14px 0 4px; border-bottom:1px solid #ccc; padding-bottom:2px; }
+  #printArea li { font-size:13px; margin:2px 0; }
+  #printArea .nota { font-size:13px; white-space:pre-wrap; margin:4px 0; }
+}
+</style>
 </head>
 <body>
 <div class="app" id="app">
@@ -890,7 +901,19 @@
     <div class="theme-row" id="themeRow"></div>
     <div class="acc-list">
       <button class="acc-btn" id="renameBtn" type="button">Cambiar nombre de la cuenta</button>
-      <button class="acc-btn" id="exportBtn" type="button">Exportar agenda</button>
+      <div id="exportBox" style="display:flex;flex-direction:column;gap:10px;padding:6px 0;">
+        <div style="font-size:15px;color:#694329;">Exportar a PDF</div>
+        <div style="display:flex;gap:8px;">
+          <select id="expMes" style="flex:1;padding:10px;border-radius:14px;border:0;background:#F2E6D8;color:#694329;font-size:15px;">
+            <option value="0">Enero</option><option value="1">Febrero</option><option value="2">Marzo</option><option value="3">Abril</option><option value="4">Mayo</option><option value="5">Junio</option><option value="6">Julio</option><option value="7">Agosto</option><option value="8">Septiembre</option><option value="9">Octubre</option><option value="10">Noviembre</option><option value="11">Diciembre</option>
+          </select>
+          <select id="expAnio" style="flex:1;padding:10px;border-radius:14px;border:0;background:#F2E6D8;color:#694329;font-size:15px;"></select>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="acc-btn" id="expPdfMes" type="button" style="flex:1;margin:0;">PDF del mes</button>
+          <button class="acc-btn" id="expPdfAnio" type="button" style="flex:1;margin:0;">PDF del año</button>
+        </div>
+      </div>
       <button class="acc-btn danger" id="deleteAllBtn" type="button">Borrar toda la agenda</button>
     </div>
     <div class="cal-foot acc-close"><span></span><button class="btn ghost" id="accountClose" type="button">Cerrar</button></div>
@@ -1890,20 +1913,44 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   $('#accountModal').addEventListener('click', (e) => { if (e.target === $('#accountModal')) $('#accountModal').hidden = true; });
   // Acciones de Personalizar
   const closeAccount = () => { $('#accountModal').hidden = true; };
-  // Exportar e importar: pasar la agenda de un equipo a otro con un archivo
-  $('#exportBtn').addEventListener('click', () => {
-    try {
-      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
-      const a = document.createElement('a');
-      const hoy = new Date().toISOString().slice(0, 10);
-      a.href = URL.createObjectURL(blob);
-      a.download = 'agenda-mate-' + hoy + '.json';
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
-      toast('Se descargó el archivo de la agenda.');
-    } catch (e) { toast('No se pudo exportar. Probá de nuevo.'); }
-  });
+  // Exportar a PDF: mes o año, con citas y notas. Se guarda con "Guardar como PDF" del navegador.
+  const escHtml = (t) => String(t == null ? '' : t).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  (function llenarPeriodos() {
+    const hoy = new Date();
+    const sel = $('#expAnio');
+    for (let y = hoy.getFullYear() - 3; y <= hoy.getFullYear() + 2; y++) {
+      const o = document.createElement('option'); o.value = y; o.textContent = y; sel.appendChild(o);
+    }
+    sel.value = hoy.getFullYear();
+    $('#expMes').value = hoy.getMonth();
+  })();
+  function armarPdf(alcance) {
+    const anio = +$('#expAnio').value;
+    const mes = +$('#expMes').value;
+    const pref = alcance === 'mes' ? anio + '-' + String(mes + 1).padStart(2, '0') + '-' : anio + '-';
+    const claves = new Set([...Object.keys(data.items || {}), ...Object.keys(data.notes || {})].filter((k) => k.startsWith(pref)));
+    const ordenadas = [...claves].sort();
+    const titulo = alcance === 'mes' ? MONTHS[mes] + ' ' + anio : 'Año ' + anio;
+    let html = '<h1>Agenda Mate: ' + escHtml(titulo) + '</h1>';
+    let hay = false;
+    for (const k of ordenadas) {
+      const items = (data.items[k] || []).slice().sort((x, y) => String(x.hora || '').localeCompare(String(y.hora || '')));
+      const nota = (data.notes[k] || '').trim();
+      if (!items.length && !nota) continue;
+      hay = true;
+      const [y, m, d] = k.split('-').map(Number);
+      const fecha = new Date(y, m - 1, d);
+      html += '<h2>' + escHtml(WEEKDAYS[fecha.getDay()] + ' ' + d + ' de ' + MONTHS[m - 1]) + '</h2>';
+      if (items.length) html += '<ul>' + items.map((it) => '<li>' + escHtml((it.hora ? it.hora + ' - ' : '') + (it.texto || '')) + '</li>').join('') + '</ul>';
+      if (nota) html += '<div class="nota">' + escHtml(nota) + '</div>';
+    }
+    if (!hay) html += '<p>No hay citas ni notas en este período.</p>';
+    $('#printArea').innerHTML = html;
+    setTimeout(() => window.print(), 100);
+  }
+  $('#expPdfMes').addEventListener('click', () => armarPdf('mes'));
+  $('#expPdfAnio').addEventListener('click', () => armarPdf('anio'));
+
   $('#deleteAllBtn').addEventListener('click', () => {
     if (!window.confirm('¿Borrar toda la agenda? Esto no se puede deshacer.')) return;
     data = { ...data, items: {}, notes: {}, photos: {}, drawings: {} };
@@ -2277,5 +2324,6 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   renderAll();
 })();
 </script>
+<div id="printArea"></div>
 </body>
 </html>
