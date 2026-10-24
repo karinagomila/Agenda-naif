@@ -627,17 +627,6 @@
 .pegado img{width:100%;height:100%;object-fit:contain;pointer-events:none;}
 </style>
 <style>#loginCanvas{display:none !important;}</style>
-<style>
-#printArea{display:none;}
-@media print {
-  body > *:not(#printArea) { display:none !important; }
-  #printArea { display:block !important; color:#000; font-family:Arial,sans-serif; padding:16px; }
-  #printArea h1 { font-size:20px; margin:0 0 12px; }
-  #printArea h2 { font-size:15px; margin:14px 0 4px; border-bottom:1px solid #ccc; padding-bottom:2px; }
-  #printArea li { font-size:13px; margin:2px 0; }
-  #printArea .nota { font-size:13px; white-space:pre-wrap; margin:4px 0; }
-}
-</style>
 </head>
 <body>
 <div class="app" id="app">
@@ -1924,29 +1913,91 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     sel.value = hoy.getFullYear();
     $('#expMes').value = hoy.getMonth();
   })();
+  function pdfEscape(t) {
+    return String(t).replace(/\\/g, '\\\\').replace(/\(/g, '\\(').replace(/\)/g, '\\)').replace(/[^\x00-\xFF]/g, '?');
+  }
+  function ajustarTexto(texto, size) {
+    const max = Math.floor(495 / (size * 0.55));
+    const out = [];
+    for (const parrafo of String(texto).split('\n')) {
+      let linea = '';
+      for (const w of parrafo.split(' ')) {
+        if ((linea + ' ' + w).trim().length > max && linea) { out.push(linea); linea = w; }
+        else linea = (linea ? linea + ' ' : '') + w;
+      }
+      out.push(linea);
+    }
+    return out;
+  }
+  function crearPdf(paginas) {
+    const objs = [];
+    const n = paginas.length;
+    const kids = paginas.map((_, i) => (5 + 2 * i) + ' 0 R').join(' ');
+    objs[1] = '<< /Type /Catalog /Pages 2 0 R >>';
+    objs[2] = '<< /Type /Pages /Kids [' + kids + '] /Count ' + n + ' >>';
+    objs[3] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>';
+    objs[4] = '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>';
+    paginas.forEach((lineas, i) => {
+      let contenido = '';
+      for (const l of lineas) {
+        contenido += 'BT /' + (l.bold ? 'F2' : 'F1') + ' ' + l.size + ' Tf ' + l.x + ' ' + l.y + ' Td (' + pdfEscape(l.t) + ') Tj ET\n';
+      }
+      objs[5 + 2 * i] = '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> /Contents ' + (6 + 2 * i) + ' 0 R >>';
+      objs[6 + 2 * i] = '<< /Length ' + contenido.length + ' >>\nstream\n' + contenido + 'endstream';
+    });
+    const total = objs.length - 1;
+    let pdf = '%PDF-1.4\n';
+    const offs = [];
+    for (let i = 1; i <= total; i++) { offs[i] = pdf.length; pdf += i + ' 0 obj\n' + objs[i] + '\nendobj\n'; }
+    const xref = pdf.length;
+    pdf += 'xref\n0 ' + (total + 1) + '\n0000000000 65535 f \n';
+    for (let i = 1; i <= total; i++) pdf += String(offs[i]).padStart(10, '0') + ' 00000 n \n';
+    pdf += 'trailer\n<< /Size ' + (total + 1) + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+    const u = new Uint8Array(pdf.length);
+    for (let i = 0; i < pdf.length; i++) u[i] = pdf.charCodeAt(i) & 255;
+    return u;
+  }
   function armarPdf(alcance) {
     const anio = +$('#expAnio').value;
     const mes = +$('#expMes').value;
     const pref = alcance === 'mes' ? anio + '-' + String(mes + 1).padStart(2, '0') + '-' : anio + '-';
     const claves = new Set([...Object.keys(data.items || {}), ...Object.keys(data.notes || {})].filter((k) => k.startsWith(pref)));
-    const ordenadas = [...claves].sort();
     const titulo = alcance === 'mes' ? MONTHS[mes] + ' ' + anio : 'Año ' + anio;
-    let html = '<h1>Agenda Mate: ' + escHtml(titulo) + '</h1>';
+    const bloques = [{ t: 'Agenda Mate: ' + titulo, size: 16, bold: true, sangria: 0, espacio: 10 }];
     let hay = false;
-    for (const k of ordenadas) {
+    for (const k of [...claves].sort()) {
       const items = (data.items[k] || []).slice().sort((x, y) => String(x.hora || '').localeCompare(String(y.hora || '')));
       const nota = (data.notes[k] || '').trim();
       if (!items.length && !nota) continue;
       hay = true;
       const [y, m, d] = k.split('-').map(Number);
       const fecha = new Date(y, m - 1, d);
-      html += '<h2>' + escHtml(WEEKDAYS[fecha.getDay()] + ' ' + d + ' de ' + MONTHS[m - 1]) + '</h2>';
-      if (items.length) html += '<ul>' + items.map((it) => '<li>' + escHtml((it.hora ? it.hora + ' - ' : '') + (it.texto || '')) + '</li>').join('') + '</ul>';
-      if (nota) html += '<div class="nota">' + escHtml(nota) + '</div>';
+      bloques.push({ t: WEEKDAYS[fecha.getDay()] + ' ' + d + ' de ' + MONTHS[m - 1], size: 12, bold: true, sangria: 0, espacio: 4, antes: 8 });
+      for (const it of items) bloques.push({ t: '- ' + (it.hora ? it.hora + ' - ' : '') + (it.texto || ''), size: 11, sangria: 10, espacio: 2 });
+      if (nota) bloques.push({ t: nota, size: 11, sangria: 0, espacio: 4 });
     }
-    if (!hay) html += '<p>No hay citas ni notas en este período.</p>';
-    $('#printArea').innerHTML = html;
-    setTimeout(() => window.print(), 100);
+    if (!hay) bloques.push({ t: 'No hay citas ni notas en este período.', size: 11, sangria: 0, espacio: 2 });
+    const paginas = [[]];
+    let y = 792;
+    for (const b of bloques) {
+      if (b.antes) y -= b.antes;
+      for (const linea of ajustarTexto(b.t, b.size)) {
+        const alto = b.size * 1.4;
+        if (y - alto < 50) { paginas.push([]); y = 792; }
+        paginas[paginas.length - 1].push({ t: linea, size: b.size, bold: !!b.bold, x: 50 + (b.sangria || 0), y: y - b.size });
+        y -= alto;
+      }
+      y -= (b.espacio || 2);
+    }
+    const bytes = crearPdf(paginas);
+    const blob = new Blob([bytes], { type: 'application/pdf' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = alcance === 'mes' ? 'agenda-mate-' + anio + '-' + String(mes + 1).padStart(2, '0') + '.pdf' : 'agenda-mate-' + anio + '.pdf';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    toast('Se descargó el PDF.');
   }
   $('#expPdfMes').addEventListener('click', () => armarPdf('mes'));
   $('#expPdfAnio').addEventListener('click', () => armarPdf('anio'));
@@ -2324,6 +2375,5 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   renderAll();
 })();
 </script>
-<div id="printArea"></div>
 </body>
 </html>
