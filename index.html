@@ -885,15 +885,12 @@
   <div class="sheet" role="dialog" aria-label="Mi cuenta">
     <p class="acc-small">Personalizar</p>
     <p class="acc-user" id="accUser"></p>
-    <div class="acc-status">Prueba gratuita: 5 días</div>
     
     <button class="sound-toggle" id="soundToggle" type="button" aria-label="Sonido de los botones"></button>
     <div class="theme-row" id="themeRow"></div>
     <div class="acc-list">
       <button class="acc-btn" id="renameBtn" type="button">Cambiar nombre de la cuenta</button>
       <button class="acc-btn" id="exportBtn" type="button">Exportar agenda</button>
-      <button class="acc-btn" id="importBtn" type="button">Importar agenda</button>
-      <input type="file" id="importFile" accept="application/json,.json" hidden>
       <button class="acc-btn danger" id="deleteAllBtn" type="button">Borrar toda la agenda</button>
     </div>
     <div class="cal-foot acc-close"><span></span><button class="btn ghost" id="accountClose" type="button">Cerrar</button></div>
@@ -1906,25 +1903,6 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
       setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
       toast('Se descargó el archivo de la agenda.');
     } catch (e) { toast('No se pudo exportar. Probá de nuevo.'); }
-  });
-  $('#importBtn').addEventListener('click', () => { $('#importFile').click(); });
-  $('#importFile').addEventListener('change', (e) => {
-    const f = e.target.files && e.target.files[0];
-    e.target.value = '';
-    if (!f) return;
-    const lector = new FileReader();
-    lector.onload = () => {
-      let d;
-      try { d = JSON.parse(lector.result); } catch (err) { toast('Ese archivo no es una agenda válida.'); return; }
-      if (!d || typeof d !== 'object' || !d.items) { toast('Ese archivo no es una agenda válida.'); return; }
-      if (!window.confirm('Esto reemplaza lo que hay en este equipo por lo del archivo. ¿Seguir?')) return;
-      data = { items: d.items || {}, notes: d.notes || {}, photos: d.photos || {}, drawings: d.drawings || {}, profile: d.profile || null, flower: d.flower || null, theme: d.theme || 'tiza', sound: !!d.sound };
-      saveData();
-      renderAll();
-      closeAccount();
-      toast('Listo, se cargó la agenda del archivo.');
-    };
-    lector.readAsText(f);
   });
   $('#deleteAllBtn').addEventListener('click', () => {
     if (!window.confirm('¿Borrar toda la agenda? Esto no se puede deshacer.')) return;
