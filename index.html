@@ -2175,7 +2175,8 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
 
   $('#checkStart').addEventListener('click', () => $('#addPill').click());
   // Tocar el logo de la tapa muestra 4 stickers para elegir (vista previa, sin cuenta)
-  $('#loginLogo').addEventListener('click', () => { $('#loginScreen').hidden = true; });
+  // Toque donde toque la portada, entra a la agenda
+  $('#loginScreen').addEventListener('click', () => { $('#loginScreen').hidden = true; });
   // Flechita y barra de NOTAS: tocar sube la hoja, y si ya está arriba, la baja
   function toggleNotes() {
     setNotes(app.classList.contains('notes-open') ? 'collapsed' : 'open');
