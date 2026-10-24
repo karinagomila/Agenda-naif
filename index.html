@@ -815,17 +815,7 @@
 <div class="modal" id="flowerModal" hidden>
   <div class="sheet" role="dialog" aria-label="Elegir diseño de florcita">
     <div class="flower-grid" id="flowerGrid"></div>
-    <div class="cal-foot"><button class="btn" id="stickerPaste" type="button" hidden>Pegar</button><button class="btn ghost" id="flowerClose">Cerrar</button></div>
-  </div>
-</div>
-
-<div class="modal" id="stickerMenu" hidden>
-  <div class="sheet" role="dialog" aria-label="Sticker">
-    <div style="display:flex;flex-direction:column;gap:12px;padding:8px 0;">
-      <button class="btn" id="stickerChange" type="button">Elegir otro</button>
-      <button class="btn" id="stickerDelete" type="button">Borrar</button>
-    </div>
-    <div class="cal-foot"><span></span><button class="btn ghost" id="stickerMenuClose" type="button">Cerrar</button></div>
+    <div class="cal-foot" style="gap:8px;flex-wrap:wrap;justify-content:flex-end;"><button class="btn" id="stickerDeleteGo" type="button" hidden>Borrar</button><button class="btn" id="stickerChangeGo" type="button" hidden>Cambiar</button><button class="btn" id="stickerPaste" type="button" hidden>Pegar</button><button class="btn ghost" id="flowerClose">Cerrar</button></div>
   </div>
 </div>
 
@@ -1765,8 +1755,14 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
       <button class="flower-tile${d.id === pendingSticker ? ' sel' : ''}" data-design="${d.id}" aria-label="${d.name}">
         <img src="${d.src}" alt="">
       </button>`).join('');
-    $('#stickerPaste').hidden = !pendingSticker;
+    updateStickerButtons();
     $('#flowerModal').hidden = false;
+  }
+  function updateStickerButtons() {
+    const editando = replaceIdx !== null;
+    $('#stickerPaste').hidden = !pendingSticker;
+    $('#stickerChangeGo').hidden = !(editando && pendingSticker);
+    $('#stickerDeleteGo').hidden = !editando;
   }
   function closeFlowerPicker() { pendingSticker = null; replaceIdx = null; $('#flowerModal').hidden = true; }
   $('#flowerBtn').addEventListener('click', () => { flowerPreview = false; pendingSticker = null; replaceIdx = null; openFlowerPicker(); });
@@ -1776,17 +1772,9 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     const t = e.target.closest('.flower-tile');
     if (!t) return;
     if (flowerPreview) { showLoginPreview(t.dataset.design); closeFlowerPicker(); return; }
-    const id = t.dataset.design;
-    if (replaceIdx !== null) {
-      const k = currentKey();
-      if (data.stickers && data.stickers[k] && data.stickers[k][replaceIdx]) { data.stickers[k][replaceIdx].id = id; saveData(); }
-      closeFlowerPicker();
-      renderStickers();
-      return;
-    }
-    pendingSticker = id;
+    pendingSticker = t.dataset.design;
     $('#flowerGrid').querySelectorAll('.flower-tile').forEach((x) => x.classList.toggle('sel', x === t));
-    $('#stickerPaste').hidden = false;
+    updateStickerButtons();
   });
 
   // ---------- Stickers pegados en la hoja de cada día (y en las notas) ----------
@@ -1831,7 +1819,9 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
       if (lista[d.i]) { lista[d.i].x = +d.x.toFixed(2); lista[d.i].y = +d.y.toFixed(2); saveData(); }
     } else {
       replaceIdx = d.i;
-      $('#stickerMenu').hidden = false;
+      pendingSticker = null;
+      flowerPreview = false;
+      openFlowerPicker();
     }
   };
   document.addEventListener('pointerup', endStickerDrag);
@@ -1846,20 +1836,21 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     closeFlowerPicker();
     renderStickers();
   });
-  $('#stickerChange').addEventListener('click', () => {
-    $('#stickerMenu').hidden = true;
-    pendingSticker = null;
-    openFlowerPicker(); // replaceIdx sigue guardado: al elegir, reemplaza
-  });
-  $('#stickerDelete').addEventListener('click', () => {
+  $('#stickerChangeGo').addEventListener('click', () => {
     const k = currentKey();
-    if (data.stickers && data.stickers[k] && replaceIdx !== null) { data.stickers[k].splice(replaceIdx, 1); saveData(); }
-    replaceIdx = null;
-    $('#stickerMenu').hidden = true;
+    if (pendingSticker && replaceIdx !== null && data.stickers && data.stickers[k] && data.stickers[k][replaceIdx]) {
+      data.stickers[k][replaceIdx].id = pendingSticker;
+      saveData();
+    }
+    closeFlowerPicker();
     renderStickers();
   });
-  $('#stickerMenuClose').addEventListener('click', () => { replaceIdx = null; $('#stickerMenu').hidden = true; });
-  $('#stickerMenu').addEventListener('click', (e) => { if (e.target === $('#stickerMenu')) { replaceIdx = null; $('#stickerMenu').hidden = true; } });
+  $('#stickerDeleteGo').addEventListener('click', () => {
+    const k = currentKey();
+    if (data.stickers && data.stickers[k] && replaceIdx !== null) { data.stickers[k].splice(replaceIdx, 1); saveData(); }
+    closeFlowerPicker();
+    renderStickers();
+  });
 
   // ---------- Foto de perfil (la elige cada usuario) ----------
   function renderAvatar() {
