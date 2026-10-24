@@ -618,6 +618,12 @@
   }
   .toast.show { opacity: 1; }
 </style>
+<style>#loginCanvas > :not(#loginLogo):not([alt="Agenda Mate"]){display:none !important;}</style>
+<style>
+#stickerLayer{position:absolute;inset:0;pointer-events:none;z-index:3;}
+.pegado{position:absolute;width:72px;height:72px;transform:translate(-50%,-50%);pointer-events:auto;touch-action:none;background:none;border:0;padding:0;cursor:grab;}
+.pegado img{width:100%;height:100%;object-fit:contain;pointer-events:none;}
+</style>
 </head>
 <body>
 <div class="app" id="app">
@@ -806,11 +812,21 @@
 <div class="modal" id="flowerModal" hidden>
   <div class="sheet" role="dialog" aria-label="Elegir diseño de florcita">
     <div class="flower-grid" id="flowerGrid"></div>
-    <div class="cal-foot"><span></span><button class="btn ghost" id="flowerClose">Cerrar</button></div>
+    <div class="cal-foot"><button class="btn" id="stickerPaste" type="button" hidden>Pegar</button><button class="btn ghost" id="flowerClose">Cerrar</button></div>
   </div>
 </div>
 
-<div class="login" id="loginScreen" hidden style="background:#F5EFE9;background-image:none;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;">
+<div class="modal" id="stickerMenu" hidden>
+  <div class="sheet" role="dialog" aria-label="Sticker">
+    <div style="display:flex;flex-direction:column;gap:12px;padding:8px 0;">
+      <button class="btn" id="stickerChange" type="button">Elegir otro</button>
+      <button class="btn" id="stickerDelete" type="button">Borrar</button>
+    </div>
+    <div class="cal-foot"><span></span><button class="btn ghost" id="stickerMenuClose" type="button">Cerrar</button></div>
+  </div>
+</div>
+
+<div class="login" id="loginScreen" style="background:#F5EFE9;background-image:none;padding:0;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:auto;">
   <style>
     [hidden]{display:none !important;}
     #loginScreen input::placeholder{color:#FEFEFE;opacity:1;}
@@ -880,6 +896,9 @@
     <div class="theme-row" id="themeRow"></div>
     <div class="acc-list">
       <button class="acc-btn" id="renameBtn" type="button">Cambiar nombre de la cuenta</button>
+      <button class="acc-btn" id="exportBtn" type="button">Exportar agenda</button>
+      <button class="acc-btn" id="importBtn" type="button">Importar agenda</button>
+      <input type="file" id="importFile" accept="application/json,.json" hidden>
       <button class="acc-btn danger" id="deleteAllBtn" type="button">Borrar toda la agenda</button>
     </div>
     <div class="cal-foot acc-close"><span></span><button class="btn ghost" id="accountClose" type="button">Cerrar</button></div>
@@ -923,10 +942,10 @@
       const raw = localStorage.getItem(KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d && typeof d === 'object') return { items: d.items || {}, notes: d.notes || {}, photos: d.photos || {}, drawings: d.drawings || {}, profile: d.profile || null, flower: d.flower || null, theme: d.theme || 'tiza', sound: !!d.sound };
+        if (d && typeof d === 'object') return { items: d.items || {}, notes: d.notes || {}, photos: d.photos || {}, drawings: d.drawings || {}, profile: d.profile || null, flower: d.flower || null, stickers: d.stickers || {}, theme: d.theme || 'tiza', sound: !!d.sound };
       }
     } catch (e) { /* no se pudo leer: empezamos vacío */ }
-    return { items: {}, notes: {}, photos: {}, drawings: {}, profile: null, flower: null, theme: 'tiza', sound: false };
+    return { items: {}, notes: {}, photos: {}, drawings: {}, profile: null, flower: null, stickers: {}, theme: 'tiza', sound: false };
   }
   let data = loadData();
 
@@ -1047,6 +1066,7 @@
     renderList();
     renderNotes();
     renderPhotos();
+    renderStickers();
   }
 
   // Cambio inmediato de día (calendario, HOY)
@@ -1728,33 +1748,108 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
     { id: 'perrocara', name: 'Perrito cara', src: 'data:image/webp;base64,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' },
     { id: 'frutilla', name: 'Frutilla', src: 'data:image/webp;base64,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' }
   ];
+  let pendingSticker = null;
+  let replaceIdx = null;
   function renderFlower() {
     applyTheme();
-    const d = FLOWER_DESIGNS.find((x) => x.id === data.flower);
+    const d = null; // el logo del encabezado queda fijo; los stickers se pegan en la hoja
     const img = $('#flowerImg');
     if (d) { img.src = d.src; img.hidden = false; $('#flowerCircle').hidden = true; }
     else { img.hidden = true; $('#flowerCircle').hidden = false; }
   }
   function openFlowerPicker() {
     $('#flowerGrid').innerHTML = (flowerPreview ? FLOWER_DESIGNS.slice(0, 4) : FLOWER_DESIGNS).map((d) => `
-      <button class="flower-tile${d.id === data.flower ? ' sel' : ''}" data-design="${d.id}" aria-label="${d.name}">
+      <button class="flower-tile${d.id === pendingSticker ? ' sel' : ''}" data-design="${d.id}" aria-label="${d.name}">
         <img src="${d.src}" alt="">
       </button>`).join('');
+    $('#stickerPaste').hidden = !pendingSticker;
     $('#flowerModal').hidden = false;
   }
-  function closeFlowerPicker() { $('#flowerModal').hidden = true; }
-  $('#flowerBtn').addEventListener('click', () => { flowerPreview = false; openFlowerPicker(); });
+  function closeFlowerPicker() { pendingSticker = null; replaceIdx = null; $('#flowerModal').hidden = true; }
+  $('#flowerBtn').addEventListener('click', () => { flowerPreview = false; pendingSticker = null; replaceIdx = null; openFlowerPicker(); });
   $('#flowerClose').addEventListener('click', closeFlowerPicker);
   $('#flowerModal').addEventListener('click', (e) => { if (e.target === $('#flowerModal')) closeFlowerPicker(); });
   $('#flowerGrid').addEventListener('click', (e) => {
     const t = e.target.closest('.flower-tile');
     if (!t) return;
     if (flowerPreview) { showLoginPreview(t.dataset.design); closeFlowerPicker(); return; }
-    data.flower = t.dataset.design;
-    saveData();
-    renderFlower();
-    closeFlowerPicker();
+    const id = t.dataset.design;
+    if (replaceIdx !== null) {
+      const k = currentKey();
+      if (data.stickers && data.stickers[k] && data.stickers[k][replaceIdx]) { data.stickers[k][replaceIdx].id = id; saveData(); }
+      closeFlowerPicker();
+      renderStickers();
+      return;
+    }
+    pendingSticker = id;
+    $('#flowerGrid').querySelectorAll('.flower-tile').forEach((x) => x.classList.toggle('sel', x === t));
+    $('#stickerPaste').hidden = false;
   });
+
+  // ---------- Stickers pegados en la hoja de cada día ----------
+  function renderStickers() {
+    data.stickers = data.stickers || {};
+    let layer = $('#stickerLayer');
+    if (!layer) { layer = document.createElement('div'); layer.id = 'stickerLayer'; $('#page').appendChild(layer); }
+    const lista = data.stickers[currentKey()] || [];
+    layer.innerHTML = lista.map((s, i) => {
+      const d = FLOWER_DESIGNS.find((x) => x.id === s.id);
+      return d ? `<button class="pegado" data-i="${i}" style="left:${s.x}%;top:${s.y}%" aria-label="${d.name}"><img src="${d.src}" alt=""></button>` : '';
+    }).join('');
+  }
+  let stickerDrag = null;
+  $('#page').addEventListener('pointerdown', (e) => {
+    const el = e.target.closest('.pegado');
+    if (!el) return;
+    stickerDrag = { el, i: +el.dataset.i, x0: e.clientX, y0: e.clientY, moved: false, x: null, y: null };
+    try { el.setPointerCapture(e.pointerId); } catch (err) {}
+  });
+  $('#page').addEventListener('pointermove', (e) => {
+    if (!stickerDrag) return;
+    if (!stickerDrag.moved && Math.hypot(e.clientX - stickerDrag.x0, e.clientY - stickerDrag.y0) < 6) return;
+    stickerDrag.moved = true;
+    const r = $('#page').getBoundingClientRect();
+    stickerDrag.x = Math.min(100, Math.max(0, (e.clientX - r.left) / r.width * 100));
+    stickerDrag.y = Math.min(100, Math.max(0, (e.clientY - r.top) / r.height * 100));
+    stickerDrag.el.style.left = stickerDrag.x + '%';
+    stickerDrag.el.style.top = stickerDrag.y + '%';
+  });
+  const endDrag = () => {
+    if (!stickerDrag) return;
+    const d = stickerDrag; stickerDrag = null;
+    if (d.moved) {
+      const lista = (data.stickers && data.stickers[currentKey()]) || [];
+      if (lista[d.i]) { lista[d.i].x = +d.x.toFixed(2); lista[d.i].y = +d.y.toFixed(2); saveData(); }
+    } else {
+      replaceIdx = d.i;
+      $('#stickerMenu').hidden = false;
+    }
+  };
+  $('#page').addEventListener('pointerup', endDrag);
+  $('#page').addEventListener('pointercancel', endDrag);
+  $('#stickerPaste').addEventListener('click', () => {
+    if (!pendingSticker) return;
+    data.stickers = data.stickers || {};
+    const k = currentKey();
+    (data.stickers[k] = data.stickers[k] || []).push({ id: pendingSticker, x: 50, y: 45 });
+    saveData();
+    closeFlowerPicker();
+    renderStickers();
+  });
+  $('#stickerChange').addEventListener('click', () => {
+    $('#stickerMenu').hidden = true;
+    pendingSticker = null;
+    openFlowerPicker(); // replaceIdx sigue guardado: al elegir, reemplaza
+  });
+  $('#stickerDelete').addEventListener('click', () => {
+    const k = currentKey();
+    if (data.stickers && data.stickers[k] && replaceIdx !== null) { data.stickers[k].splice(replaceIdx, 1); saveData(); }
+    replaceIdx = null;
+    $('#stickerMenu').hidden = true;
+    renderStickers();
+  });
+  $('#stickerMenuClose').addEventListener('click', () => { replaceIdx = null; $('#stickerMenu').hidden = true; });
+  $('#stickerMenu').addEventListener('click', (e) => { if (e.target === $('#stickerMenu')) { replaceIdx = null; $('#stickerMenu').hidden = true; } });
 
   // ---------- Foto de perfil (la elige cada usuario) ----------
   function renderAvatar() {
@@ -1802,6 +1897,39 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
   $('#accountModal').addEventListener('click', (e) => { if (e.target === $('#accountModal')) $('#accountModal').hidden = true; });
   // Acciones de Personalizar
   const closeAccount = () => { $('#accountModal').hidden = true; };
+  // Exportar e importar: pasar la agenda de un equipo a otro con un archivo
+  $('#exportBtn').addEventListener('click', () => {
+    try {
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const a = document.createElement('a');
+      const hoy = new Date().toISOString().slice(0, 10);
+      a.href = URL.createObjectURL(blob);
+      a.download = 'agenda-mate-' + hoy + '.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+      toast('Se descargó el archivo de la agenda.');
+    } catch (e) { toast('No se pudo exportar. Probá de nuevo.'); }
+  });
+  $('#importBtn').addEventListener('click', () => { $('#importFile').click(); });
+  $('#importFile').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    e.target.value = '';
+    if (!f) return;
+    const lector = new FileReader();
+    lector.onload = () => {
+      let d;
+      try { d = JSON.parse(lector.result); } catch (err) { toast('Ese archivo no es una agenda válida.'); return; }
+      if (!d || typeof d !== 'object' || !d.items) { toast('Ese archivo no es una agenda válida.'); return; }
+      if (!window.confirm('Esto reemplaza lo que hay en este equipo por lo del archivo. ¿Seguir?')) return;
+      data = { items: d.items || {}, notes: d.notes || {}, photos: d.photos || {}, drawings: d.drawings || {}, profile: d.profile || null, flower: d.flower || null, theme: d.theme || 'tiza', sound: !!d.sound };
+      saveData();
+      renderAll();
+      closeAccount();
+      toast('Listo, se cargó la agenda del archivo.');
+    };
+    lector.readAsText(f);
+  });
   $('#deleteAllBtn').addEventListener('click', () => {
     if (!window.confirm('¿Borrar toda la agenda? Esto no se puede deshacer.')) return;
     data = { ...data, items: {}, notes: {}, photos: {}, drawings: {} };
@@ -2053,7 +2181,7 @@ $('#notesPencil').addEventListener('click', () => { textOn = false; setDrawing(t
 
   $('#checkStart').addEventListener('click', () => $('#addPill').click());
   // Tocar el logo de la tapa muestra 4 stickers para elegir (vista previa, sin cuenta)
-  $('#loginLogo').addEventListener('click', () => { flowerPreview = true; openFlowerPicker(); });
+  $('#loginLogo').addEventListener('click', () => { $('#loginScreen').hidden = true; });
   // Flechita y barra de NOTAS: tocar sube la hoja, y si ya está arriba, la baja
   function toggleNotes() {
     setNotes(app.classList.contains('notes-open') ? 'collapsed' : 'open');
